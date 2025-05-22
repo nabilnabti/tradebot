@@ -73,4 +73,10 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # === Lancement du bot en mode Webhook
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    app = ApplicationBuilder().token(TELEGRAM
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    app.add_handler(MessageHandler(filters.PHOTO, handle_image))
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000)),
+        webhook_url=WEBHOOK_URL
+    )
