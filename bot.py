@@ -9,9 +9,14 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 TELEGRAM_BOT_TOKEN = "7972031642:AAHH7xxNlCyNIG3j-r8osQx3O4H2wqW8Qqg"
 TELEGRAM_CHANNEL_ID = -1002690403598
 OPENAI_API_KEY = "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"
-WEBHOOK_URL = "https://tradebot-1-dkz2.onrender.com/webhook"  # ← webhook direct
+WEBHOOK_URL = "https://tradebot-1-dkz2.onrender.com/webhook"
 
 openai.api_key = OPENAI_API_KEY
+
+# === DEBUG : log tout ce qui arrive ===
+async def debug_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("📩 Message brut reçu :")
+    print(update)
 
 # === GPT VISION ===
 async def analyze_image_with_gpt(image_bytes):
@@ -39,7 +44,6 @@ async def analyze_image_with_gpt(image_bytes):
     )
     return response["choices"][0]["message"]["content"]
 
-# === STYLING DU SIGNAL
 def stylise_result(raw_text):
     lines = raw_text.strip().splitlines()
     if len(lines) < 4:
@@ -49,33 +53,25 @@ def stylise_result(raw_text):
     tp = lines[2].split(":")[1].strip()
     sl = lines[3].split(":")[1].strip()
 
-    return f"""🔥 <b>SIGNAL VIP – {actif.strip()}</b> 🔥
+    return f"SIGNAL VIP – {actif.strip()}\n\nType : {trade_type.strip()}\nEntrée : {pe}\nTP : {tp}\nSL : {sl}\n"
 
-📈 <b>Type : {trade_type.strip()}</b>
-🎯 <b>Entrée</b> : {pe}
-✅ <b>TP</b>      : {tp}
-🛑 <b>SL</b>      : {sl}
-
-📤 Copie et exécute ! <b>BE automatique à +20PIPS</b> !
-"""
-
-# === TRAITEMENT DE L'IMAGE
+# === Handler photo
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.photo:
-        print("✅ Image reçue")  # log debug
-        file = await update.message.photo[-1].get_file()
-        image_bytes = await file.download_as_bytearray()
-        result = await analyze_image_with_gpt(image_bytes)
-        styled = stylise_result(result)
-        await context.bot.send_message(chat_id=TELEGRAM_CHANNEL_ID, text=styled, parse_mode="HTML")
-        await update.message.reply_text("✅ Signal envoyé dans le canal.")
+    print("📸 Photo détectée !")
+    file = await update.message.photo[-1].get_file()
+    image_bytes = await file.download_as_bytearray()
+    result = await analyze_image_with_gpt(image_bytes)
+    styled = stylise_result(result)
+    await context.bot.send_message(chat_id=TELEGRAM_CHANNEL_ID, text=styled)
+    await update.message.reply_text("✅ Signal envoyé dans le canal.")
 
-# === LANCEMENT EN MODE WEBHOOK
+# === Lancement Webhook
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    app.add_handler(MessageHandler(filters.ALL, debug_all))  # log tout
     app.add_handler(MessageHandler(filters.PHOTO, handle_image))
-    print("🤖 Bot prêt avec webhook !")
+    print("🤖 Bot en mode DEBUG prêt.")
     app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 10000)),
